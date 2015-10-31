@@ -20,6 +20,8 @@
 #define GF_BASE_FIELD_SIZE       (1ULL << GF_BASE_FIELD_WIDTH)
 #define GF_BASE_FIELD_GROUP_SIZE  GF_BASE_FIELD_SIZE-1
 
+#define GF_MULTBY_TWO(p) (((p) << 1) ^ (((p) & GF_FIRST_BIT) ? h->prim_poly : 0))
+
 struct gf_w64_group_data {
     uint64_t *reduce;
     uint64_t *shift;

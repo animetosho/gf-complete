@@ -18,8 +18,6 @@
 
 #define MM_PRINT8(s, r) { uint8_t blah[16], ii; printf("%-12s", s); _mm_storeu_si128((__m128i *)blah, r); for (ii = 0; ii < 16; ii += 1) printf("%s%02x", (ii%4==0) ? "   " : " ", blah[15-ii]); printf("\n"); }
 
-#define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
-
 #define AB2(ip, am1 ,am2, b, t1, t2) {\
   t1 = (b << 1) & am1;\
   t2 = b & am2; \
@@ -1439,7 +1437,6 @@ gf_w32_split_8_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
   struct gf_w32_split_8_8_data *d88;
   uint32_t *t[4];
   int i, j, k, change;
-  uint32_t pp;
   gf_region_data rd;
   
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -1457,7 +1454,6 @@ gf_w32_split_8_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
     change = (val != d88->last_value);
     if (change) d88->last_value = val;
   }
-  pp = h->prim_poly;
 
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
   gf_do_initial_region_alignment(&rd);
@@ -1474,7 +1470,7 @@ gf_w32_split_8_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
         for (k = 0; k < j; k++) {
           t[i][k^j] = (v ^ t[i][k]);
         }
-        v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+        v = GF_MULTBY_TWO(v);
       }
     }
   } 
@@ -1506,7 +1502,6 @@ gf_w32_split_16_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_
   struct gf_split_16_32_lazy_data *d16;
   uint32_t *t[2];
   int i, j, k, change;
-  uint32_t pp;
   gf_region_data rd;
   
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -1517,8 +1512,6 @@ gf_w32_split_16_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_
   for (i = 0; i < 2; i++) t[i] = d16->tables[i];
   change = (val != d16->last_value);
   if (change) d16->last_value = val;
-
-  pp = h->prim_poly;
 
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
   gf_do_initial_region_alignment(&rd);
@@ -1535,7 +1528,7 @@ gf_w32_split_16_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_
         for (k = 0; k < j; k++) {
           t[i][k^j] = (v ^ t[i][k]);
         }
-        v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+        v = GF_MULTBY_TWO(v);
       }
     }
   } 
@@ -1701,14 +1694,13 @@ gf_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
   gf_internal_t *h;
   struct gf_split_4_32_lazy_data *ld;
   int i, j, k;
-  uint32_t pp, v, s, *s32, *d32, *top;
+  uint32_t v, s, *s32, *d32, *top;
   gf_region_data rd;
  
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
   h = (gf_internal_t *) gf->scratch;
-  pp = h->prim_poly;
 
   ld = (struct gf_split_4_32_lazy_data *) h->private;
 
@@ -1723,7 +1715,7 @@ gf_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
         for (k = 0; k < j; k++) {
           ld->tables[i][k^j] = (v ^ ld->tables[i][k]);
         }
-        v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+        v = GF_MULTBY_TWO(v);
       }
     }
   }
@@ -1756,7 +1748,7 @@ gf_w32_split_4_32_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
 #ifdef INTEL_SSSE3
   gf_internal_t *h;
   int i, j, k;
-  uint32_t pp, v, *s32, *d32, *top;
+  uint32_t v, *s32, *d32, *top;
   __m128i si, tables[8][4], p0, p1, p2, p3, mask1, v0, v1, v2, v3;
   struct gf_split_4_32_lazy_data *ld;
   uint8_t btable[16];
@@ -1766,7 +1758,6 @@ gf_w32_split_4_32_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
   h = (gf_internal_t *) gf->scratch;
-  pp = h->prim_poly;
   
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 64);
   gf_do_initial_region_alignment(&rd);
@@ -1784,7 +1775,7 @@ gf_w32_split_4_32_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
       for (k = 0; k < j; k++) {
         ld->tables[i][k^j] = (v ^ ld->tables[i][k]);
       }
-      v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+      v = GF_MULTBY_TWO(v);
     }
     for (j = 0; j < 4; j++) {
       for (k = 0; k < 16; k++) {
@@ -1948,7 +1939,7 @@ gf_w32_split_4_32_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, uint
 #ifdef INTEL_SSSE3
   gf_internal_t *h;
   int i, j, k;
-  uint32_t pp, v, *s32, *d32, *top, tmp_table[16];
+  uint32_t v, *s32, *d32, *top, tmp_table[16];
   __m128i si, tables[8][4], p0, p1, p2, p3, mask1, v0, v1, v2, v3, mask8;
   __m128i tv1, tv2, tv3, tv0;
   uint8_t btable[16];
@@ -1958,7 +1949,6 @@ gf_w32_split_4_32_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, uint
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
   h = (gf_internal_t *) gf->scratch;
-  pp = h->prim_poly;
   
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 64);
   gf_do_initial_region_alignment(&rd);
@@ -1974,7 +1964,7 @@ gf_w32_split_4_32_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, uint
       for (k = 0; k < j; k++) {
         tmp_table[k^j] = (v ^ tmp_table[k]);
       }
-      v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+      v = GF_MULTBY_TWO(v);
     }
     for (j = 0; j < 4; j++) {
       for (k = 0; k < 16; k++) {

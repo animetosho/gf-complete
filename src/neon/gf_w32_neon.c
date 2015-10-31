@@ -198,7 +198,7 @@ neon_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32
 {
   gf_internal_t *h;
   int i, j, k;
-  uint32_t pp, v, *s32, *d32, *top, tmp_table[16];
+  uint32_t v, *s32, *d32, *top, tmp_table[16];
   uint8_t btable[8][4][16];
   gf_region_data rd;
 
@@ -206,7 +206,6 @@ neon_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
   h = (gf_internal_t *) gf->scratch;
-  pp = h->prim_poly;
 
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 64);
   gf_do_initial_region_alignment(&rd);
@@ -222,7 +221,7 @@ neon_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32
       for (k = 0; k < j; k++) {
         tmp_table[k^j] = (v ^ tmp_table[k]);
       }
-      v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+      v = GF_MULTBY_TWO(v);
     }
     for (j = 0; j < 4; j++) {
       for (k = 0; k < 16; k++) {

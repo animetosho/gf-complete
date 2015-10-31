@@ -260,7 +260,7 @@ gf_w64_neon_split_4_lazy_multiply_region(gf_t *gf, void *src, void *dest,
 {
   gf_internal_t *h;
   int i, j, k;
-  uint64_t pp, v, *s64, *d64, *top;
+  uint64_t v, *s64, *d64, *top;
   struct gf_split_4_64_lazy_data *ld;
   gf_region_data rd;
 
@@ -275,7 +275,6 @@ gf_w64_neon_split_4_lazy_multiply_region(gf_t *gf, void *src, void *dest,
   top = (uint64_t *) rd.d_top;
 
   h = (gf_internal_t *) gf->scratch;
-  pp = h->prim_poly;
   ld = (struct gf_split_4_64_lazy_data *) h->private;
 
   v = val;
@@ -285,7 +284,7 @@ gf_w64_neon_split_4_lazy_multiply_region(gf_t *gf, void *src, void *dest,
       for (k = 0; k < j; k++) {
         ld->tables[i][k^j] = (v ^ ld->tables[i][k]);
       }
-      v = (v & GF_FIRST_BIT) ? ((v << 1) ^ pp) : (v << 1);
+      v = GF_MULTBY_TWO(v);
     }
   }
 

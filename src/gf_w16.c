@@ -35,9 +35,6 @@
 
 #define MM_PRINT(s, r) { uint8_t blah[16], ii; printf("%-12s", s); _mm_storeu_si128((__m128i *)blah, r); for (ii = 0; ii < 16; ii += 2) printf("  %02x %02x", blah[15-ii], blah[14-ii]); printf("\n"); }
 
-#define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
-//#define GF_MULTBY_TWO(p) (((p) << 1) ^ (((p) & GF_FIRST_BIT) ? h->prim_poly : 0))
-
 static
 inline
 gf_val_32_t gf_w16_inverse_from_divide (gf_t *gf, gf_val_32_t a)

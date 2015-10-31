@@ -21,6 +21,8 @@
 #define GF_BASE_FIELD_WIDTH (8)
 #define GF_BASE_FIELD_SIZE       (1 << GF_BASE_FIELD_WIDTH)
 
+#define GF_MULTBY_TWO(p) (((p) << 1) ^ (((p) & GF_FIRST_BIT) ? h->prim_poly : 0))
+
 struct gf_w16_logtable_data {
     uint16_t      log_tbl[GF_FIELD_SIZE];
     uint16_t      antilog_tbl[GF_FIELD_SIZE * 2];
