@@ -16,7 +16,7 @@
 
 #define two_x(a) {\
   a[0] <<= 1; \
-  if (a[1] & 1ULL << 63) a[0] ^= 1; \
+  a[0] ^= a[1] >> 63; \
   a[1] <<= 1; }
   
 #define a_get_b(a, i, b, j) {\
