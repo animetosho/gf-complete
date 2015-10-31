@@ -24,10 +24,19 @@
           t2 = _mm_and_si128(va, m2); \
           t2 = _mm_sub_epi64 (_mm_slli_epi64(t2, 1), _mm_srli_epi64(t2, (GF_FIELD_WIDTH-1))); \
           va = _mm_xor_si128(t1, _mm_and_si128(t2, pp)); }
+#define SSE_GF_MULTBY_TWO(va) \
+          _mm_xor_si128( \
+            _mm_slli_epi16((va), 1), \
+            _mm_and_si128(_mm_set1_epi16(h->prim_poly), _mm_cmpeq_epi16( \
+              _mm_and_si128((va), _mm_set1_epi16(GF_FIRST_BIT)), \
+              _mm_set1_epi16(GF_FIRST_BIT) \
+            )) \
+          )
 
 #define MM_PRINT(s, r) { uint8_t blah[16], ii; printf("%-12s", s); _mm_storeu_si128((__m128i *)blah, r); for (ii = 0; ii < 16; ii += 2) printf("  %02x %02x", blah[15-ii], blah[14-ii]); printf("\n"); }
 
 #define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
+//#define GF_MULTBY_TWO(p) (((p) << 1) ^ (((p) & GF_FIRST_BIT) ? h->prim_poly : 0))
 
 static
 inline
@@ -947,18 +956,24 @@ gf_w16_table_lazy_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t v
   gf_do_final_region_alignment(&rd);
 }
 
+#define SSE_GF_MULTBY_16(x) \
+    x = SSE_GF_MULTBY_TWO(x); \
+    x = SSE_GF_MULTBY_TWO(x); \
+    x = SSE_GF_MULTBY_TWO(x); \
+    x = SSE_GF_MULTBY_TWO(x)
+
 static
 void
 gf_w16_split_4_16_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t val, int bytes, int xor)
 {
 #ifdef INTEL_SSSE3
-  uint64_t i, j, *s64, *d64, *top64;
-  uint64_t c, prod;
-  uint8_t low[4][16];
-  uint8_t high[4][16];
+  uint64_t *s64, *d64, *top64;;
+  gf_internal_t* h = (gf_internal_t *) gf->scratch;
   gf_region_data rd;
 
-  __m128i  mask, ta, tb, ti, tpl, tph, tlow[4], thigh[4], tta, ttb, lmask;
+  __m128i  mask, ta, tb, ti, tpl, tph, tta, ttb, lmask;
+  __m128i  tlow0, tlow1, tlow2, tlow3, thigh0, thigh1, thigh2, thigh3;
+  uint16_t tmp[8];
 
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
@@ -966,26 +981,42 @@ gf_w16_split_4_16_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_v
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 32);
   gf_do_initial_region_alignment(&rd);
 
-  for (j = 0; j < 16; j++) {
-    for (i = 0; i < 4; i++) {
-      c = (j << (i*4));
-      prod = gf->multiply.w32(gf, c, val);
-      low[i][j] = (prod & 0xff);
-      high[i][j] = (prod >> 8);
-    }
-  }
-
-  for (i = 0; i < 4; i++) {
-    tlow[i] = _mm_loadu_si128((__m128i *)low[i]);
-    thigh[i] = _mm_loadu_si128((__m128i *)high[i]);
-  }
+  lmask = _mm_set1_epi16 (0xff);
+  
+  tmp[0] = 0;
+  tmp[1] = val;
+  tmp[2] = GF_MULTBY_TWO(val);
+  tmp[3] = tmp[2] ^ val;
+  tmp[4] = GF_MULTBY_TWO(tmp[2]);
+  tmp[5] = tmp[4] ^ val;
+  tmp[6] = tmp[4] ^ tmp[2];
+  tmp[7] = tmp[4] ^ tmp[3];
+  
+  #define SWIZZLE_STORE(i, a, b) \
+    tlow  ##i = _mm_packus_epi16(_mm_and_si128(a, lmask), _mm_and_si128(b, lmask)); \
+    thigh ##i = _mm_packus_epi16(_mm_srli_epi16(a, 8), _mm_srli_epi16(b, 8))
+  
+  ta = _mm_loadu_si128((__m128i*)tmp);
+  tb = _mm_xor_si128(ta, _mm_set1_epi16( GF_MULTBY_TWO(tmp[4]) ));
+  SWIZZLE_STORE(0, ta, tb);
+  /* multiply by 16 */
+  SSE_GF_MULTBY_16(ta);
+  SSE_GF_MULTBY_16(tb);
+  SWIZZLE_STORE(1, ta, tb);
+  SSE_GF_MULTBY_16(ta);
+  SSE_GF_MULTBY_16(tb);
+  SWIZZLE_STORE(2, ta, tb);
+  SSE_GF_MULTBY_16(ta);
+  SSE_GF_MULTBY_16(tb);
+  SWIZZLE_STORE(3, ta, tb);
+  
+  #undef SWIZZLE_STORE
 
   s64 = (uint64_t *) rd.s_start;
   d64 = (uint64_t *) rd.d_start;
   top64 = (uint64_t *) rd.d_top;
 
   mask = _mm_set1_epi8 (0x0f);
-  lmask = _mm_set1_epi16 (0xff);
 
   if (xor) {
     while (d64 != top64) {
@@ -1002,22 +1033,22 @@ gf_w16_split_4_16_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_v
       ta = _mm_packus_epi16(ttb, tta);
 
       ti = _mm_and_si128 (mask, tb);
-      tph = _mm_shuffle_epi8 (thigh[0], ti);
-      tpl = _mm_shuffle_epi8 (tlow[0], ti);
+      tph = _mm_shuffle_epi8 (thigh0, ti);
+      tpl = _mm_shuffle_epi8 (tlow0, ti);
   
       tb = _mm_srli_epi16(tb, 4);
       ti = _mm_and_si128 (mask, tb);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[1], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[1], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow1, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh1, ti), tph);
 
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[2], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[2], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow2, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh2, ti), tph);
   
       ta = _mm_srli_epi16(ta, 4);
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[3], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[3], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow3, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh3, ti), tph);
 
       ta = _mm_unpackhi_epi8(tpl, tph);
       tb = _mm_unpacklo_epi8(tpl, tph);
@@ -1048,22 +1079,22 @@ gf_w16_split_4_16_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_v
       ta = _mm_packus_epi16(ttb, tta);
 
       ti = _mm_and_si128 (mask, tb);
-      tph = _mm_shuffle_epi8 (thigh[0], ti);
-      tpl = _mm_shuffle_epi8 (tlow[0], ti);
+      tph = _mm_shuffle_epi8 (thigh0, ti);
+      tpl = _mm_shuffle_epi8 (tlow0, ti);
   
       tb = _mm_srli_epi16(tb, 4);
       ti = _mm_and_si128 (mask, tb);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[1], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[1], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow1, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh1, ti), tph);
 
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[2], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[2], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow2, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh2, ti), tph);
   
       ta = _mm_srli_epi16(ta, 4);
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[3], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[3], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow3, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh3, ti), tph);
 
       ta = _mm_unpackhi_epi8(tpl, tph);
       tb = _mm_unpacklo_epi8(tpl, tph);
@@ -1085,12 +1116,12 @@ void
 gf_w16_split_4_16_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t val, int bytes, int xor)
 {
 #ifdef INTEL_SSSE3
-  uint64_t i, j, *s64, *d64, *top64;
-  uint64_t c, prod;
-  uint8_t low[4][16];
-  uint8_t high[4][16];
+  uint64_t *s64, *d64, *top64;;
+  gf_internal_t* h = (gf_internal_t *) gf->scratch;
   gf_region_data rd;
-  __m128i  mask, ta, tb, ti, tpl, tph, tlow[4], thigh[4];
+  __m128i  mask, ta, tb, ti, tpl, tph;
+  __m128i  tlow0, tlow1, tlow2, tlow3, thigh0, thigh1, thigh2, thigh3;
+  uint16_t tmp[8];
 
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
@@ -1098,19 +1129,36 @@ gf_w16_split_4_16_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
   gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 32);
   gf_do_initial_region_alignment(&rd);
 
-  for (j = 0; j < 16; j++) {
-    for (i = 0; i < 4; i++) {
-      c = (j << (i*4));
-      prod = gf->multiply.w32(gf, c, val);
-      low[i][j] = (prod & 0xff);
-      high[i][j] = (prod >> 8);
-    }
-  }
-
-  for (i = 0; i < 4; i++) {
-    tlow[i] = _mm_loadu_si128((__m128i *)low[i]);
-    thigh[i] = _mm_loadu_si128((__m128i *)high[i]);
-  }
+  mask = _mm_set1_epi16 (0xff);
+  
+  tmp[0] = 0;
+  tmp[1] = val;
+  tmp[2] = GF_MULTBY_TWO(val);
+  tmp[3] = tmp[2] ^ val;
+  tmp[4] = GF_MULTBY_TWO(tmp[2]);
+  tmp[5] = tmp[4] ^ val;
+  tmp[6] = tmp[4] ^ tmp[2];
+  tmp[7] = tmp[4] ^ tmp[3];
+  
+  #define SWIZZLE_STORE(i, a, b) \
+    tlow  ##i = _mm_packus_epi16(_mm_and_si128(a, mask), _mm_and_si128(b, mask)); \
+    thigh ##i = _mm_packus_epi16(_mm_srli_epi16(a, 8), _mm_srli_epi16(b, 8))
+  
+  ta = _mm_loadu_si128((__m128i*)tmp);
+  tb = _mm_xor_si128(ta, _mm_set1_epi16( GF_MULTBY_TWO(tmp[4]) ));
+  SWIZZLE_STORE(0, ta, tb);
+  /* multiply by 16 */
+  SSE_GF_MULTBY_16(ta);
+  SSE_GF_MULTBY_16(tb);
+  SWIZZLE_STORE(1, ta, tb);
+  SSE_GF_MULTBY_16(ta);
+  SSE_GF_MULTBY_16(tb);
+  SWIZZLE_STORE(2, ta, tb);
+  SSE_GF_MULTBY_16(ta);
+  SSE_GF_MULTBY_16(tb);
+  SWIZZLE_STORE(3, ta, tb);
+  
+  #undef SWIZZLE_STORE
 
   s64 = (uint64_t *) rd.s_start;
   d64 = (uint64_t *) rd.d_start;
@@ -1125,22 +1173,22 @@ gf_w16_split_4_16_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
       tb = _mm_load_si128((__m128i *) (s64+2));
 
       ti = _mm_and_si128 (mask, tb);
-      tph = _mm_shuffle_epi8 (thigh[0], ti);
-      tpl = _mm_shuffle_epi8 (tlow[0], ti);
+      tph = _mm_shuffle_epi8 (thigh0, ti);
+      tpl = _mm_shuffle_epi8 (tlow0, ti);
   
       tb = _mm_srli_epi16(tb, 4);
       ti = _mm_and_si128 (mask, tb);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[1], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[1], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow1, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh1, ti), tph);
 
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[2], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[2], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow2, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh2, ti), tph);
   
       ta = _mm_srli_epi16(ta, 4);
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[3], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[3], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow3, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh3, ti), tph);
 
       ta = _mm_load_si128((__m128i *) d64);
       tph = _mm_xor_si128(tph, ta);
@@ -1159,22 +1207,22 @@ gf_w16_split_4_16_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
       tb = _mm_load_si128((__m128i *) (s64+2));
 
       ti = _mm_and_si128 (mask, tb);
-      tph = _mm_shuffle_epi8 (thigh[0], ti);
-      tpl = _mm_shuffle_epi8 (tlow[0], ti);
+      tph = _mm_shuffle_epi8 (thigh0, ti);
+      tpl = _mm_shuffle_epi8 (tlow0, ti);
   
       tb = _mm_srli_epi16(tb, 4);
       ti = _mm_and_si128 (mask, tb);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[1], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[1], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow1, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh1, ti), tph);
 
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[2], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[2], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow2, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh2, ti), tph);
   
       ta = _mm_srli_epi16(ta, 4);
       ti = _mm_and_si128 (mask, ta);
-      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow[3], ti), tpl);
-      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh[3], ti), tph);
+      tpl = _mm_xor_si128(_mm_shuffle_epi8 (tlow3, ti), tpl);
+      tph = _mm_xor_si128(_mm_shuffle_epi8 (thigh3, ti), tph);
 
       _mm_store_si128 ((__m128i *)d64, tph);
       _mm_store_si128 ((__m128i *)(d64+2), tpl);
