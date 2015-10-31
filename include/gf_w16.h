@@ -14,6 +14,7 @@
 #include <stdint.h>
 
 #define GF_FIELD_WIDTH (16)
+#define GF_FIRST_BIT (1 << 15)
 #define GF_FIELD_SIZE (1 << GF_FIELD_WIDTH)
 #define GF_MULT_GROUP_SIZE GF_FIELD_SIZE-1
 

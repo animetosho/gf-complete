@@ -19,7 +19,6 @@
 #define GF_BASE_FIELD_WIDTH (16)
 #define GF_BASE_FIELD_SIZE       (1 << GF_BASE_FIELD_WIDTH)
 #define GF_BASE_FIELD_GROUP_SIZE  GF_BASE_FIELD_SIZE-1
-#define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
 
 struct gf_split_2_32_lazy_data {
     uint32_t      tables[16][4];

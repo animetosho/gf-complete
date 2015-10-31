@@ -18,6 +18,8 @@
 
 #define MM_PRINT8(s, r) { uint8_t blah[16], ii; printf("%-12s", s); _mm_storeu_si128((__m128i *)blah, r); for (ii = 0; ii < 16; ii += 1) printf("%s%02x", (ii%4==0) ? "   " : " ", blah[15-ii]); printf("\n"); }
 
+#define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
+
 #define AB2(ip, am1 ,am2, b, t1, t2) {\
   t1 = (b << 1) & am1;\
   t2 = b & am2; \
