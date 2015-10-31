@@ -56,7 +56,7 @@ int xor)
     gf_region_data rd;
 
     /* We only do this to check on alignment. */
-    gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+    gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
 
     if (val[0] == 0) {
       if (val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -97,7 +97,7 @@ int xor)
     gf_internal_t * h = gf->scratch;
     prim_poly = _mm_set_epi32(0, 0, 0, (uint32_t)h->prim_poly);
     /* We only do this to check on alignment. */
-    gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+    gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
 
     if (val[0] == 0) {
       if (val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -499,7 +499,7 @@ gf_w128_split_4_128_multiply_region(gf_t *gf, void *src, void *dest, gf_val_128_
   struct gf_w128_split_4_128_data *ld;
 
   /* We only do this to check on alignment. */
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
 
   if (val[0] == 0) {
     if (val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -589,7 +589,7 @@ gf_w128_split_4_128_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_val_
   h = (gf_internal_t *) gf->scratch;
   
   /* We only do this to check on alignment. */
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 16);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 16, 16);
 
   /* Doing this instead of gf_do_initial_region_alignment() because that doesn't hold 128-bit vals */
 
@@ -688,7 +688,7 @@ gf_w128_split_4_128_sse_altmap_multiply_region(gf_t *gf, void *src, void *dest, 
   h = (gf_internal_t *) gf->scratch;
   
   /* We only do this to check on alignment. */
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 256);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 16, 256);
 
   /* Doing this instead of gf_do_initial_region_alignment() because that doesn't hold 128-bit vals */
 
@@ -789,7 +789,7 @@ gf_w128_split_8_128_multiply_region(gf_t *gf, void *src, void *dest, gf_val_128_
   struct gf_w128_split_8_128_data *ld;
 
   /* Check on alignment. Ignore it otherwise. */
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
 
   if (val[0] == 0) {
     if (val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -860,7 +860,7 @@ gf_w128_bytwo_b_multiply_region(gf_t *gf, void *src, void *dest, gf_val_128_t va
   gf_region_data rd;
 
   /* We only do this to check on alignment. */
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
 
   if (val[0] == 0) {
     if (val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -1039,7 +1039,7 @@ gf_w128_group_multiply_region(gf_t *gf, void *src, void *dest, gf_val_128_t val,
   uint64_t *a128, *c128, *top;
 
   /* We only do this to check on alignment. */
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
       
   if (val[0] == 0) {
     if (val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
@@ -1305,7 +1305,7 @@ gf_w128_composite_multiply_region(gf_t *gf, void *src, void *dest, gf_val_128_t 
 
   if (val[0] == 0 && val[1] == 0) { gf_multby_zero(dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 8, 8);
 
   s64 = rd.s_start;
   d64 = rd.d_start;
@@ -1353,7 +1353,7 @@ gf_w128_composite_multiply_region_alt(gf_t *gf, void *src, void *dest, gf_val_12
   int sub_reg_size;
   gf_region_data rd;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 64);
+  gf_set_region_data(&rd, gf, src, dest, bytes, 0, xor, 16, 64);
   gf_w128_multiply_region_from_single(gf, src, dest, val, ((uint8_t *)rd.s_start-(uint8_t *)src), xor);
 
   slow = (uint8_t *) rd.s_start;
@@ -1587,7 +1587,7 @@ static void gf_w128_split_extract_word(gf_t *gf, void *start, int bytes, int ind
   uint8_t *r8;
   gf_region_data rd;
 
-  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 256);
+  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 16, 256);
   r64 = (uint64_t *) start;
   if ((r64 + index*2 < (uint64_t *) rd.d_start) ||
       (r64 + index*2 >= (uint64_t *) rd.d_top)) {
@@ -1630,7 +1630,7 @@ void gf_w128_composite_extract_word(gf_t *gf, void *start, int bytes, int index,
   gf_region_data rd;
 
   h = (gf_internal_t *) gf->scratch;
-  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 64);
+  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 16, 64);
   r64 = (uint64_t *) start;
   if ((r64 + index*2 < (uint64_t *) rd.d_start) ||
       (r64 + index*2 >= (uint64_t *) rd.d_top)) {

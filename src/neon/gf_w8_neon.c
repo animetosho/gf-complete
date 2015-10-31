@@ -164,7 +164,7 @@ gf_w8_neon_clm_multiply_region_from_single_ ## x (gf_t *gf, void *src,  \
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }           \
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }       \
                                                                         \
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16);          \
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 16);      \
   gf_do_initial_region_alignment(&rd);                                  \
   s8 = (uint8_t *) rd.s_start;                                          \
   d8 = (uint8_t *) rd.d_start;                                          \
@@ -226,7 +226,7 @@ gf_w8_split_multiply_region_neon(gf_t *gf, void *src, void *dest, gf_val_32_t va
 
   htd = (struct gf_w8_half_table_data *) ((gf_internal_t *) (gf->scratch))->private;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 16);
   gf_do_initial_region_alignment(&rd);
 
   bh = (uint8_t *) htd->high;

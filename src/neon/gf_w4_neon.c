@@ -129,7 +129,7 @@ gf_w4_neon_clm_multiply_region_from_single (gf_t *gf, void *src, void *dest,
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 16);
   gf_do_initial_region_alignment(&rd);
 
   s8 = (uint8_t *) rd.s_start;
@@ -215,7 +215,7 @@ gf_w4_single_table_multiply_region_neon(gf_t *gf, void *src, void *dest,
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 16);
   gf_do_initial_region_alignment(&rd);
 
   sptr = rd.s_start;

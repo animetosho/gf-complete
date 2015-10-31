@@ -267,7 +267,7 @@ gf_w64_neon_split_4_lazy_multiply_region(gf_t *gf, void *src, void *dest,
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 128);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 128);
   gf_do_initial_region_alignment(&rd);
 
   s64 = (uint64_t *) rd.s_start;

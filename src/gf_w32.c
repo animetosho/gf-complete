@@ -294,7 +294,7 @@ gf_val_32_t gf_w32_composite_extract_word(gf_t *gf, void *start, int bytes, int 
   gf_region_data rd;
 
   h = (gf_internal_t *) gf->scratch;
-  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 32);
+  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 16, 32);
   r32 = (uint32_t *) start;
   if (r32 + index < (uint32_t *) rd.d_start) return r32[index];
   if (r32 + index >= (uint32_t *) rd.d_top) return r32[index];
@@ -316,7 +316,7 @@ gf_val_32_t gf_w32_split_extract_word(gf_t *gf, void *start, int bytes, int inde
   uint8_t *r8;
   gf_region_data rd;
 
-  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 64);
+  gf_set_region_data(&rd, gf, start, start, bytes, 0, 0, 16, 64);
   r32 = (uint32_t *) start;
   if (r32 + index < (uint32_t *) rd.d_start) return r32[index];
   if (r32 + index >= (uint32_t *) rd.d_top) return r32[index];
@@ -693,7 +693,7 @@ void gf_w32_group_s_equals_r_multiply_region(gf_t *gf, void *src, void *dest, gf
   g_s = h->arg1;
   gf_w32_group_set_shift_tables(gd->shift, val, h);
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
@@ -755,7 +755,7 @@ void gf_w32_group_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t v
   gd = (struct gf_w32_group_data *) h->private;
   gf_w32_group_set_shift_tables(gd->shift, val, h);
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
@@ -997,7 +997,7 @@ gf_w32_bytwo_p_nosse_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_
 
   btd = (struct gf_w32_bytwo_data *) ((gf_internal_t *) (gf->scratch))->private;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 8);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 8, 8);
   gf_do_initial_region_alignment(&rd);
 
   s64 = (uint64_t *) rd.s_start;
@@ -1060,7 +1060,7 @@ gf_w32_bytwo_p_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t 
 
   btd = (struct gf_w32_bytwo_data *) ((gf_internal_t *) (gf->scratch))->private;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 16);
   gf_do_initial_region_alignment(&rd);
 
   vrev = 0;
@@ -1109,7 +1109,7 @@ gf_w32_bytwo_b_nosse_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 32);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 32);
   gf_do_initial_region_alignment(&rd);
 
   btd = (struct gf_w32_bytwo_data *) ((gf_internal_t *) (gf->scratch))->private;
@@ -1305,7 +1305,7 @@ gf_w32_bytwo_b_sse_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t 
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 16);
   gf_do_initial_region_alignment(&rd);
 
   btd = (struct gf_w32_bytwo_data *) ((gf_internal_t *) (gf->scratch))->private;
@@ -1457,7 +1457,7 @@ gf_w32_split_8_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
   }
   pp = h->prim_poly;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
@@ -1518,7 +1518,7 @@ gf_w32_split_16_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_
 
   pp = h->prim_poly;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
@@ -1568,7 +1568,7 @@ gf_w32_split_2_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   gf_do_initial_region_alignment(&rd);
 
   h = (gf_internal_t *) gf->scratch;
@@ -1625,7 +1625,7 @@ gf_w32_split_2_32_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, uint
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
   if (val == 1) { gf_multby_one(src, dest, bytes, xor); return; }
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 32);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 32);
   gf_do_initial_region_alignment(&rd);
 
   h = (gf_internal_t *) gf->scratch;
@@ -1710,7 +1710,7 @@ gf_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32_t
 
   ld = (struct gf_split_4_32_lazy_data *) h->private;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   gf_do_initial_region_alignment(&rd);
   
   if (ld->last_value != val) {
@@ -1766,7 +1766,7 @@ gf_w32_split_4_32_lazy_sse_altmap_multiply_region(gf_t *gf, void *src, void *des
   h = (gf_internal_t *) gf->scratch;
   pp = h->prim_poly;
   
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 64);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 64);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
@@ -1958,7 +1958,7 @@ gf_w32_split_4_32_lazy_sse_multiply_region(gf_t *gf, void *src, void *dest, uint
   h = (gf_internal_t *) gf->scratch;
   pp = h->prim_poly;
   
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 64);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 64);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
@@ -2540,7 +2540,7 @@ gf_w32_composite_multiply_region(gf_t *gf, void *src, void *dest, uint32_t val, 
   alog = cd->alog;
 
   if (val == 0) { gf_multby_zero(dest, bytes, xor); return; }
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 4, 4);
   
   s32 = rd.s_start;
   d32 = rd.d_start;
@@ -2626,7 +2626,7 @@ gf_w32_composite_multiply_region_alt(gf_t *gf, void *src, void *dest, uint32_t v
      which the two operate is a multiple of 32. Of course, that
      junks up the mapping, but so be it -- that's why we have extract_word.... */
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 32);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 32);
   gf_do_initial_region_alignment(&rd);
 
   slow = (uint8_t *) rd.s_start;

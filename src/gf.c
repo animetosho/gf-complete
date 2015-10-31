@@ -780,11 +780,11 @@ void gf_set_region_data(gf_region_data *rd,
   int bytes,
   uint64_t val,
   int xor,
-  int align)
+  int align,
+  int walign)
 {
   gf_internal_t *h = NULL;
   int wb;
-  uint32_t a;
   unsigned long uls, uld;
 
   if (gf == NULL) {  /* JSP - Can be NULL if you're just doing XOR's */
@@ -801,12 +801,10 @@ void gf_set_region_data(gf_region_data *rd,
   rd->bytes = bytes;
   rd->val = val;
   rd->xor = xor;
-  rd->align = align;
+  rd->align = walign;
 
   uls = (unsigned long) src;
   uld = (unsigned long) dest;
-
-  a = (align <= 16) ? align : 16;
 
   if (align == -1) { /* JSP: This is cauchy.  Error check bytes, then set up the pointers
                         so that there are no alignment regions. */
@@ -823,10 +821,10 @@ void gf_set_region_data(gf_region_data *rd,
     return;
   }
 
-  if (uls % a != uld % a) {
+  if (uls % align != uld % align) {
     fprintf(stderr, "Error in region multiply operation.\n");
     fprintf(stderr, "The source & destination pointers must be aligned with respect\n");
-    fprintf(stderr, "to each other along a %d byte boundary.\n", a);
+    fprintf(stderr, "to each other along a %d byte boundary.\n", align);
     fprintf(stderr, "Src = 0x%lx.  Dest = 0x%lx\n", (unsigned long) src,
             (unsigned long) dest);
     assert(0);
@@ -846,12 +844,12 @@ void gf_set_region_data(gf_region_data *rd,
     assert(0);
   }
 
-  uls %= a;
-  if (uls != 0) uls = (a-uls);
+  uls %= align;
+  if (uls != 0) uls = (align-uls);
   rd->s_start = (uint8_t *)rd->src + uls;
   rd->d_start = (uint8_t *)rd->dest + uls;
   bytes -= uls;
-  bytes -= (bytes % align);
+  bytes -= (bytes % walign);
   rd->s_top = (uint8_t *)rd->s_start + bytes;
   rd->d_top = (uint8_t *)rd->d_start + bytes;
 
@@ -921,7 +919,7 @@ void gf_multby_one(void *src, void *dest, int bytes, int xor)
   s8 = (uint8_t *) src;
   d8 = (uint8_t *) dest;
   if (uls % 16 == uld % 16) {
-    gf_set_region_data(&rd, NULL, src, dest, bytes, 1, xor, 16);
+    gf_set_region_data(&rd, NULL, src, dest, bytes, 1, xor, 16, 16);
     while (s8 != rd.s_start) {
       *d8 ^= *s8;
       d8++;
@@ -965,7 +963,7 @@ void gf_multby_one(void *src, void *dest, int bytes, int xor)
   d8 = (uint8_t *) dest;
 
   if (uls % 16 == uld % 16) {
-    gf_set_region_data(&rd, NULL, src, dest, bytes, 1, xor, 16);
+    gf_set_region_data(&rd, NULL, src, dest, bytes, 1, xor, 16, 16);
     while (s8 != rd.s_start) {
       *d8 ^= *s8;
       s8++;
@@ -1001,7 +999,7 @@ void gf_multby_one(void *src, void *dest, int bytes, int xor)
     return;
   }
   
-  gf_set_region_data(&rd, NULL, src, dest, bytes, 1, xor, 8);
+  gf_set_region_data(&rd, NULL, src, dest, bytes, 1, xor, 8, 8);
   s8 = (uint8_t *) src;
   d8 = (uint8_t *) dest;
   while (d8 != rd.d_start) {
@@ -1047,7 +1045,7 @@ static void gf_unaligned_xor(void *src, void *dest, int bytes)
      If I change gf_set_region_data() to split alignment & chunksize, then 
      I could do this correctly. */
 
-  gf_set_region_data(&rd, NULL, dest, dest, bytes, 1, 1, 8*UNALIGNED_BUFSIZE);
+  gf_set_region_data(&rd, NULL, dest, dest, bytes, 1, 1, 8, 8*UNALIGNED_BUFSIZE);
   s8 = (uint8_t *) src;
   d8 = (uint8_t *) dest;
 

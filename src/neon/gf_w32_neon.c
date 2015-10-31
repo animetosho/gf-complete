@@ -208,7 +208,7 @@ neon_w32_split_4_32_lazy_multiply_region(gf_t *gf, void *src, void *dest, uint32
   h = (gf_internal_t *) gf->scratch;
   pp = h->prim_poly;
 
-  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 64);
+  gf_set_region_data(&rd, gf, src, dest, bytes, val, xor, 16, 64);
   gf_do_initial_region_alignment(&rd);
 
   s32 = (uint32_t *) rd.s_start;
