@@ -30,7 +30,7 @@
 #define GF_FIRST_BIT (1 << 15)
 #define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
 
-#define GF_ANTILOG(x) ltd->antilog_tbl[((x) >> GF_FIELD_WIDTH) + ((x) & GF_MULT_GROUP_SIZE)]
+#define GF_ANTILOG(x) ltd->antilog_tbl[((x) >> (GF_FIELD_WIDTH)) + ((x) & (GF_MULT_GROUP_SIZE))]
 
 static
 inline
