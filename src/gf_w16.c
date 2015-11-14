@@ -30,6 +30,8 @@
 #define GF_FIRST_BIT (1 << 15)
 #define GF_MULTBY_TWO(p) (((p) & GF_FIRST_BIT) ? (((p) << 1) ^ h->prim_poly) : (p) << 1)
 
+#define GF_ANTILOG(x) ltd->antilog_tbl[((x) >> GF_FIELD_WIDTH) + ((x) & GF_MULT_GROUP_SIZE)]
+
 static
 inline
 gf_val_32_t gf_w16_inverse_from_divide (gf_t *gf, gf_val_32_t a)
@@ -605,13 +607,13 @@ gf_w16_log_multiply_region(gf_t *gf, void *src, void *dest, gf_val_32_t val, int
 
   if (xor) {
     while (d16 < (uint16_t *) rd.d_top) {
-      *d16 ^= (*s16 == 0 ? 0 : ltd->antilog_tbl[lv + ltd->log_tbl[*s16]]);
+      *d16 ^= (*s16 == 0 ? 0 : GF_ANTILOG(lv + ltd->log_tbl[*s16]));
       d16++;
       s16++;
     }
   } else {
     while (d16 < (uint16_t *) rd.d_top) {
-      *d16 = (*s16 == 0 ? 0 : ltd->antilog_tbl[lv + ltd->log_tbl[*s16]]);
+      *d16 = (*s16 == 0 ? 0 : GF_ANTILOG(lv + ltd->log_tbl[*s16]));
       d16++;
       s16++;
     }
@@ -627,7 +629,7 @@ gf_w16_log_multiply(gf_t *gf, gf_val_32_t a, gf_val_32_t b)
   struct gf_w16_logtable_data *ltd;
 
   ltd = (struct gf_w16_logtable_data *) ((gf_internal_t *) gf->scratch)->private;
-  return (a == 0 || b == 0) ? 0 : ltd->antilog_tbl[(int) ltd->log_tbl[a] + (int) ltd->log_tbl[b]];
+  return (a == 0 || b == 0) ? 0 : GF_ANTILOG((int) ltd->log_tbl[a] + (int) ltd->log_tbl[b]);
 }
 
 static
@@ -641,8 +643,8 @@ gf_w16_log_divide(gf_t *gf, gf_val_32_t a, gf_val_32_t b)
   if (a == 0 || b == 0) return 0;
   ltd = (struct gf_w16_logtable_data *) ((gf_internal_t *) gf->scratch)->private;
 
-  log_sum = (int) ltd->log_tbl[a] - (int) ltd->log_tbl[b];
-  return (ltd->d_antilog[log_sum]);
+  log_sum = (int) ltd->log_tbl[a] - (int) ltd->log_tbl[b] + GF_MULT_GROUP_SIZE;
+  return (GF_ANTILOG(log_sum));
 }
 
 static
@@ -668,19 +670,18 @@ int gf_w16_log_init(gf_t *gf)
   
   for (i = 0; i < GF_MULT_GROUP_SIZE+1; i++)
     ltd->log_tbl[i] = 0;
-  ltd->d_antilog = ltd->antilog_tbl + GF_MULT_GROUP_SIZE;
 
   b = 1;
   for (i = 0; i < GF_MULT_GROUP_SIZE; i++) {
       if (ltd->log_tbl[b] != 0) check = 1;
       ltd->log_tbl[b] = i;
       ltd->antilog_tbl[i] = b;
-      ltd->antilog_tbl[i+GF_MULT_GROUP_SIZE] = b;
       b <<= 1;
       if (b & GF_FIELD_SIZE) {
           b = b ^ h->prim_poly;
       }
   }
+  ltd->antilog_tbl[GF_MULT_GROUP_SIZE] = ltd->antilog_tbl[0];
 
   /* If you can't construct the log table, there's a problem.  This code is used for
      some other implementations (e.g. in SPLIT), so if the log table doesn't work in 
@@ -2446,7 +2447,7 @@ uint16_t *gf_w16_get_div_alog_table(gf_t *gf)
   h = (gf_internal_t *) gf->scratch;
   if (gf->multiply.w32 == gf_w16_log_multiply) {
     ltd = (struct gf_w16_logtable_data *) h->private;
-    return (uint16_t *) ltd->d_antilog;
+    return (uint16_t *) ltd->antilog_tbl;
   }
   return NULL;
 }

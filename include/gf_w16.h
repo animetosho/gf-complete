@@ -22,9 +22,8 @@
 
 struct gf_w16_logtable_data {
     uint16_t      log_tbl[GF_FIELD_SIZE];
-    uint16_t      antilog_tbl[GF_FIELD_SIZE * 2];
+    uint16_t      antilog_tbl[GF_FIELD_SIZE];
     uint16_t      inv_tbl[GF_FIELD_SIZE];
-    uint16_t      *d_antilog;
 };
 
 struct gf_w16_zero_logtable_data {
